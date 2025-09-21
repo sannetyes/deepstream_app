@@ -1,0 +1,10 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+*.env
+
+# Docker - Ignore persistent data
+ollama_data/
+open_webui_data/
+metadata_volume/
