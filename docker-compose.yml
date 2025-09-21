@@ -1,13 +1,13 @@
 version: '3.8'
 
 services:
+  # The Ollama and Streamlit Service
   app:
-    # Build a custom image from the Dockerfile in the current directory
     build: .
     container_name: ollama_streamlit_app
     ports:
-      - "11434:11434" # Expose Ollama's API port
-      - "8501:8501"   # Expose Streamlit's GUI port
+      - "11434:11434" # Ollama API port
+      - "8501:8501"   # Streamlit GUI port
     volumes:
       - ollama_data:/root/.ollama # Persist Ollama models
     deploy:
@@ -17,6 +17,18 @@ services:
             - driver: nvidia
               count: all
               capabilities: [gpu]
+
+  # The new DeepStream Service
+  deepstream:
+    image: nvcr.io/nvidia/deepstream:7.1-triton-multiarch
+    container_name: deepstream_app
+    runtime: nvidia
+    working_dir: /app
+    volumes:
+      # Mount your local deepstream_app directory to /app inside the container
+      - ./deepstream_app:/app
+    # Command to run your Python script when the container starts
+    command: python3 deepstream-camera.py -c config.txt
 
 volumes:
   ollama_data:

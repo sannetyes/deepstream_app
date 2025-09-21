@@ -59,7 +59,7 @@ with col2:
             try:
                 # Use the ollama.chat function
                 response = ollama.chat(
-                    model='gemma3:270m', # Specify the model you want to use
+                    model='llama3:latest', # Specify the model you want to use
                     messages=[
                         {'role': 'user', 'content': user_input}
                     ]
