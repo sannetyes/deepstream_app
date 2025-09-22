@@ -47,36 +47,51 @@ with col2:
 
         # --- Button Logic ---
         if send_button and user_input:
-            # Add user's message to chat history
+            # Add user's VISIBLE message to chat history
             st.session_state.messages.append({
                 "role": "user", 
                 "content": user_input,
                 "timestamp": datetime.now().strftime("%H:%M:%S")
             })
 
-            # --- 2. GET RESPONSE FROM OLLAMA ---
-            # Replace the canned response with a call to the Ollama API
+            # --- READ THE INVISIBLE LOG FILE ---
             try:
-                # Use the ollama.chat function
+                with open("/log/log.txt", "r") as f:
+                    log_content = f.read()
+                    print(log_content)
+            except Exception as e:
+                log_content = "" # Keep it empty if there's an error
+
+            # --- COMBINE LOG AND USER INPUT ---
+            # Create the combined input that will be sent to the model
+            combined_input = f"--- Context from log ---\n{log_content}\n--- User Question ---\n{user_input}"
+            
+            # For multi-turn conversation, get previous messages
+            # We will replace the last user message with our new combined one
+            messages_for_api = st.session_state.messages[:-1] + [
+                {
+                    "role": "user",
+                    "content": combined_input
+                }
+            ]
+            
+            # --- GET RESPONSE FROM OLLAMA ---
+            try:
                 response = ollama.chat(
-                    model='llama3:latest', # Specify the model you want to use
-                    messages=[
-                        {'role': 'user', 'content': user_input}
-                    ]
+                    model='llama3:latest',
+                    messages=messages_for_api
                 )
                 bot_response = response['message']['content']
             except Exception as e:
-                # Handle potential connection errors
-                bot_response = f"Error: Could not connect to Ollama. Is it running?\n\n{e}"
+                bot_response = f"Error communicating with Ollama: {e}"
             
-            # Add assistant's response to chat history
+            # Add assistant's VISIBLE response to chat history
             st.session_state.messages.append({
                 "role": "assistant", 
                 "content": bot_response,
                 "timestamp": datetime.now().strftime("%H:%M:%S")
             })
             
-            # Rerun the app to display new messages
             st.rerun()
 
         if clear_button:
