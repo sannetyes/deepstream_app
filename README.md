@@ -36,10 +36,12 @@ The Dockerfile in this repository automates the entire environment setup. Run th
 
 `-d`: This runs the container in detached (background) mode.
 
-🏃 Running the Application
+## 🏃 Running the Application
 Once the image has been built, you can start, stop, and restart the application with simple commands.
 
-To Run an Already Built Image
+### To Run an Already Built Image
 If you have already run the --build command once, you do not need to do it again. To start the application using the image you already built, use the following command:
 
-docker compose up -d
+`docker compose up -d`
+
+***Note:** Logs can be viewed by excluding `-d` flag from the command*
