@@ -1,10 +1,10 @@
-### Prerequisites
+## Prerequisites
 Before you begin, ensure you have the following installed on your host machine (Ubuntu is recommended):
 
-## 1. Hardware
+### 1. Hardware
 An NVIDIA GPU (dGPU)
 
-## 2. Software
+### 2. Software
 A recent NVIDIA Driver (version 535+ recommended).
 
 Docker Engine (version 28.4.0 or newer is recommended).
@@ -16,7 +16,7 @@ Docker Compose.
 🚀 Getting Started
 Follow these steps to build the custom Docker image and get the application running.
 
-## 1. Clone the Repository
+### 1. Clone the Repository
 Clone this project to your local machine:
 ```bash
 git clone [https://github.com/sannetyes/Deepstream_yolo_task.git](https://github.com/sannetyes/Deepstream_yolo_task.git)
@@ -27,7 +27,7 @@ To allow the Docker container to open a GUI window on your desktop (for the Deep
 
 `xhost +`
 
-## 3. Build the Docker Image
+### 3. Build the Docker Image
 The Dockerfile in this repository automates the entire environment setup. Run the following command from the root of the project to build the image. This will take several minutes.
 
 ``` docker compose up --build -d```
