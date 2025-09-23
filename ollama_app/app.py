@@ -64,8 +64,10 @@ with col2:
 
             # --- COMBINE LOG AND USER INPUT ---
             # Create the combined input that will be sent to the model
+            print("\n" + "="*50, flush=True)
             combined_input = f"--- Context from log ---\n{log_content}\n--- User Question ---\n{user_input}"
-            
+            print(f"combined_input is provided as {combined_input} \n", flush=True)
+            print("="*50 + "\n", flush=True)
             # For multi-turn conversation, get previous messages
             # We will replace the last user message with our new combined one
             messages_for_api = st.session_state.messages[:-1] + [

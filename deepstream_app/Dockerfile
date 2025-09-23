@@ -1,11 +1,11 @@
 # Start from the official NVIDIA DeepStream base image
 FROM nvcr.io/nvidia/deepstream:7.1-triton-multiarch
 
-# Set an environment variable to prevent interactive prompts during installation
+# Do not wait for user input
 ENV DEBIAN_FRONTEND=noninteractive
 
 # --------------------BINDINGS---------------------------------
-# 1. Install all system prerequisites in a single layer for efficiency
+# 1. PREREQUISITES
 RUN apt-get update && apt-get install -y \
     python3-gi \
     python3-dev \
@@ -27,14 +27,13 @@ RUN apt-get update && apt-get install -y \
     autoconf \
     automake \
     libgirepository1.0-dev \
-    pkg-config libcairo2-dev \
     libcairo2-dev \
     pkg-config \
     # Clean up apt cache to reduce the final image size
     && rm -rf /var/lib/apt/lists/*
 
-# 2. Install Python build dependencies
-RUN pip3 install build setuptools wheel
+
+RUN pip3 install build setuptools wheel cuda-python==12.6
 
 WORKDIR /opt/nvidia/deepstream/deepstream-7.1/sources
 
@@ -42,7 +41,9 @@ RUN git clone https://github.com/NVIDIA-AI-IOT/deepstream_python_apps.git
 
 WORKDIR /opt/nvidia/deepstream/deepstream-7.1/sources/deepstream_python_apps
 
-RUN git checkout v1.2.0
+RUN git checkout v1.2.0 
+
+RUN python3 --version 
 
 # 5. Initialize the Git submodules for Python bindings
 RUN git submodule update --init && \

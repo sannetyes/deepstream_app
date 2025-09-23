@@ -16,7 +16,7 @@ PGIE_CLASS_ID_ROADSIGN = 3
 MUXER_BATCH_TIMEOUT_USEC = 33000
 
 # Define the path for the metadata log file
-LOG_FILE_PATH = "/log/detection_log.txt"
+LOG_FILE_PATH = "/log/log.txt"
 
 def osd_sink_pad_buffer_probe(pad, info, u_data):
     frame_number = 0
@@ -107,7 +107,7 @@ def osd_sink_pad_buffer_probe(pad, info, u_data):
         py_nvosd_text_params.set_bg_clr = 1
         py_nvosd_text_params.text_bg_clr.set(0.0, 0.0, 0.0, 1.0)
 
-        print(pyds.get_string(py_nvosd_text_params.display_text))
+        #print(pyds.get_string(py_nvosd_text_params.display_text))
         pyds.nvds_add_display_meta_to_frame(frame_meta, display_meta)
 
         try:
@@ -191,7 +191,7 @@ def main(args):
     streammux.set_property('height', 1080)
     streammux.set_property('batch-size', 1)
     streammux.set_property('batched-push-timeout', MUXER_BATCH_TIMEOUT_USEC)
-    pgie.set_property('config-file-path', "dstest1_pgie_config.txt")
+    pgie.set_property('config-file-path', "config.txt")
     sink.set_property('sync', False)
 
     print("Adding elements to Pipeline \n")

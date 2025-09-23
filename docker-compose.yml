@@ -7,7 +7,8 @@ services:
       - "11434:11434" # Ollama API port
       - "8501:8501"   # Streamlit GUI port
     volumes:
-      - ollama_data:/root/.ollama # Persist Ollama models
+      - ./ollama_app:/app # Persist Ollama models
+      - log_data:/log
     deploy:
       resources:
         reservations:
@@ -25,10 +26,12 @@ services:
     network_mode: "host"
     privileged: true
     environment:
-      - DISPLAY=$DISPLAY
+      - DISPLAY=${DISPLAY}
+      - PYTHONPATH=/opt/nvidia/deepstream/deepstream-7.1/sources/deepstream_python_apps/apps/
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix
       - ./deepstream_app:/app
+      - log_data:/log
     devices:
       - "/dev/video0:/dev/video0"
     working_dir: /app
@@ -42,4 +45,4 @@ services:
               capabilities: [gpu]
 
 volumes:
-  ollama_data:
+   log_data:
