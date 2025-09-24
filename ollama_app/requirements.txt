@@ -1,0 +1,4 @@
+streamlit==1.48.0
+streamlit-webrtc==0.63.4
+ollama
+opencv-python

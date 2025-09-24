@@ -1,101 +1,114 @@
 #!/usr/bin/env python3
 import streamlit as st
 from datetime import datetime
-from streamlit_webrtc import webrtc_streamer
-import ollama # <--- 1. IMPORT OLLAMA
+from streamlit_webrtc import webrtc_streamer, RTCConfiguration, VideoTransformerBase, WebRtcMode
+import ollama
+import av
+import cv2
+
+# --- Configuration ---
+RTSP_URL = "rtsp://deepstream:8554/ds-feed"
+OLLAMA_HOST = "http://localhost:11434"
+LOG_FILE_PATH = "/log/log.txt"
 
 # --- Page Configuration ---
 st.set_page_config(layout="wide", page_title="Camera and Chatbot Interface")
+st.title("DeepStream Vision AI Interface")
 
 # --- Initialization of Session State ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+# --- Custom Video Transformer for RTSP (Compatible Version) ---
+class RTSPVideoTransformer(VideoTransformerBase):
+    def __init__(self, rtsp_url):
+        self.cap = cv2.VideoCapture(rtsp_url)
+        if not self.cap.isOpened():
+            print(f"Error: Could not open RTSP stream at {rtsp_url}")
+        self.last_frame = None
+
+    def transform(self, frame):
+        ret, new_frame = self.cap.read()
+        if not ret:
+            return self.last_frame
+        self.last_frame = new_frame
+        return new_frame
+
 # --- Main Application Layout ---
-col1, col2 = st.columns([1, 1], gap="large")
+col1, col2 = st.columns([2, 1], gap="large")
 
 # --- Column 1: Real-time Camera Stream ---
 with col1:
-    st.header("Camera Feed")
-    st.markdown("This is your real-time camera stream. Allow the browser to access your camera.")
-    webrtc_streamer(key="live-stream")
+    st.header("Live DeepStream Feed")
+    st.markdown("This is the real-time, annotated video stream from the DeepStream service.")
+    
+    webrtc_streamer(
+        key="deepstream-rtsp",
+        mode=WebRtcMode.SENDRECV,
+        rtc_configuration=RTCConfiguration(
+            {"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
+        ),
+        media_stream_constraints={"video": True, "audio": False},
+        video_transformer_factory=lambda: RTSPVideoTransformer(RTSP_URL)
+    )
 
 # --- Column 2: Chatbot Interface ---
 with col2:
     st.header("Chatbot")
     st.markdown("Interact with the chatbot below.")
 
-    # --- Chat Display Area ---
-    chat_container = st.container(height=400)
-    with chat_container:
-        for message in st.session_state.messages:
-            with st.chat_message(message["role"]):
+    # Display the entire chat history at the top
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            if "timestamp" in message:
                 st.markdown(f"*{message['timestamp']}*")
-                st.write(message["content"])
+            st.write(message["content"])
 
-    # --- Chat Input and Controls Area ---
-    controls_container = st.container()
-    with controls_container:
-        with st.form(key='chat_form', clear_on_submit=True):
-            user_input = st.text_input("Your message:", placeholder="Type your message here...", key="input_text")
-            
-            form_cols = st.columns([1, 1, 2])
-            with form_cols[0]:
-                send_button = st.form_submit_button(label="Send")
-            with form_cols[1]:
-                clear_button = st.form_submit_button(label="Clear")
+    # The chat input is the main event handler
+    if user_input := st.chat_input("Your message..."):
+        # 1. Add and immediately display the user's message
+        st.session_state.messages.append({
+            "role": "user", 
+            "content": user_input,
+            "timestamp": datetime.now().strftime("%H:%M:%S")
+        })
+        with st.chat_message("user"):
+            st.markdown(f"*{datetime.now().strftime('%H:%M:%S')}*")
+            st.write(user_input)
 
-        # --- Button Logic ---
-        if send_button and user_input:
-            # Add user's VISIBLE message to chat history
-            st.session_state.messages.append({
-                "role": "user", 
-                "content": user_input,
-                "timestamp": datetime.now().strftime("%H:%M:%S")
-            })
+        # 2. Get and display the assistant's response
+        with st.chat_message("assistant"):
+            with st.spinner("Thinking..."):
+                try:
+                    with open(LOG_FILE_PATH, "r") as f:
+                        log_content = f.read()
+                except Exception as e:
+                    log_content = f"Could not read log file: {e}"
 
-            # --- READ THE INVISIBLE LOG FILE ---
-            try:
-                with open("/log/log.txt", "r") as f:
-                    log_content = f.read()
-                    print(log_content)
-            except Exception as e:
-                log_content = "" # Keep it empty if there's an error
-
-            # --- COMBINE LOG AND USER INPUT ---
-            # Create the combined input that will be sent to the model
-            print("\n" + "="*50, flush=True)
-            combined_input = f"--- Context from log ---\n{log_content}\n--- User Question ---\n{user_input}"
-            print(f"combined_input is provided as {combined_input} \n", flush=True)
-            print("="*50 + "\n", flush=True)
-            # For multi-turn conversation, get previous messages
-            # We will replace the last user message with our new combined one
-            messages_for_api = st.session_state.messages[:-1] + [
-                {
-                    "role": "user",
-                    "content": combined_input
-                }
-            ]
-            
-            # --- GET RESPONSE FROM OLLAMA ---
-            try:
-                response = ollama.chat(
-                    model='llama3:latest',
-                    messages=messages_for_api
+                combined_input = (
+                    "You are an AI assistant analyzing a real-time video metadata log. "
+                    "Use the following log to answer the user's question.\n\n"
+                    f"--- METADATA LOG ---\n{log_content}\n--- END OF LOG ---\n\n"
+                    f"User Question: {user_input}"
                 )
-                bot_response = response['message']['content']
-            except Exception as e:
-                bot_response = f"Error communicating with Ollama: {e}"
-            
-            # Add assistant's VISIBLE response to chat history
-            st.session_state.messages.append({
-                "role": "assistant", 
-                "content": bot_response,
-                "timestamp": datetime.now().strftime("%H:%M:%S")
-            })
-            
-            st.rerun()
+                
+                try:
+                    client = ollama.Client(host=OLLAMA_HOST)
+                    stream = client.chat(
+                        model='llama3',
+                        messages=[{'role': 'user', 'content': combined_input}],
+                        stream=True
+                    )
+                    bot_response = st.write_stream(
+                        (chunk['message']['content'] for chunk in stream)
+                    )
+                except Exception as e:
+                    bot_response = f"Error communicating with Ollama: {e}"
+                    st.error(bot_response)
 
-        if clear_button:
-            st.session_state.messages = []
-            st.rerun()
+        # 3. Add the full assistant response to the session state for the next rerun
+        st.session_state.messages.append({
+            "role": "assistant", 
+            "content": bot_response,
+            "timestamp": datetime.now().strftime("%H:%M:%S")
+        })

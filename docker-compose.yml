@@ -1,41 +1,48 @@
-services:
-  # Ollama app & Stramlit GUI
-  app:
-    build: .
-    container_name: ollama_streamlit_app
-    ports:
-      - "11434:11434" # Ollama API port
-      - "8501:8501"   # Streamlit GUI port
-    volumes:
-      - ./ollama_app:/app # Persist Ollama models
-      - log_data:/log
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
 
-  # Deepstream app 
+services:
+  # --- Service 1: The DeepStream Application (RTSP Server) ---
   deepstream:
     build: ./deepstream_app
     container_name: deepstream_app
-    stdin_open: true 
-    tty: true
-    network_mode: "host"
     privileged: true
     environment:
-      - DISPLAY=${DISPLAY}
+      # CORRECTED: The PYTHONPATH now points to the correct parent directory.
       - PYTHONPATH=/opt/nvidia/deepstream/deepstream-7.1/sources/deepstream_python_apps/apps/
     volumes:
-      - /tmp/.X11-unix:/tmp/.X11-unix
       - ./deepstream_app:/app
       - log_data:/log
     devices:
       - "/dev/video0:/dev/video0"
     working_dir: /app
+    # This should run the RTSP server script to stream video.
     command: python3 deepstream-camera.py /dev/video0
+    #command: tail -f /dev/null
+    ports:
+      - "8554:8554"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    # MODIFICATION: Removed 'network_mode: "host"' to allow services to communicate.
+    # This is the primary fix for your "Connection refused" error.
+
+  # --- Service 2: The Combined Streamlit GUI and Ollama Server ---
+  app:
+    build: ./ollama_app # Corrected the build context to point to the right folder
+    container_name: ollama_streamlit_app
+    ports:
+      - "11434:11434" # Ollama API port
+      - "8501:8501"   # Streamlit GUI port
+    volumes:
+      - ./ollama_app:/app
+      - log_data:/log
+      - ollama_models:/root/.ollama
+    command: /start.sh
+    depends_on:
+      - deepstream
     deploy:
       resources:
         reservations:
@@ -44,5 +51,7 @@ services:
               count: all
               capabilities: [gpu]
 
+# --- This section defines the shared volumes for data persistence ---
 volumes:
-   log_data:
+  log_data:
+  ollama_models:
